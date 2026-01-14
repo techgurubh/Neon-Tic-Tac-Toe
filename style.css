@@ -1,259 +1,254 @@
-:root {
-    --bg-color: #050505;
-    --primary-purple: #b026ff;
-    --primary-cyan: #00eaff;
-    --glass-bg: rgba(255, 255, 255, 0.05);
-    --border-glow: 0 0 10px rgba(176, 38, 255, 0.5);
-}
+/* ===============================
+   SOUND SETUP (ADD ONCE ONLY)
+================================ */
+const clickSound = document.getElementById('clickSound');
+const winSound   = document.getElementById('winSound');
+const loseSound  = document.getElementById('loseSound');
+const drawSound  = document.getElementById('drawSound');
 
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    user-select: none;
-}
+const playSound = (sound) => {
+    if (!sound) return;
+    sound.currentTime = 0;
+    sound.play();
+};
 
-body {
-    background-color: var(--bg-color);
-    background-image: radial-gradient(circle at 50% 50%, #1a0024 0%, #000000 100%);
-    color: white;
-    font-family: 'Orbitron', sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    overflow: hidden;
-}
+/* ===============================
+   GAME ELEMENTS
+================================ */
+const cells = document.querySelectorAll('.cell');
+const statusText = document.getElementById('status');
+const restartBtn = document.getElementById('restartBtn');
+const aiToggle = document.getElementById('aiToggle');
+const labelPvp = document.getElementById('label-pvp');
+const labelAi = document.getElementById('label-ai');
 
-.container {
-    text-align: center;
-    position: relative;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
+/* ===============================
+   GAME STATE
+================================ */
+let currentPlayer = 'X';
+let gameState = ["", "", "", "", "", "", "", "", ""];
+let gameActive = true;
+let isVsAI = true;
 
-/* Title Styling */
-h1 {
-    font-size: 3rem;
-    margin-bottom: 10px;
-    text-transform: uppercase;
-    letter-spacing: 4px;
-    color: #fff;
-    text-shadow: 
-        0 0 10px var(--primary-purple),
-        0 0 20px var(--primary-purple),
-        0 0 40px var(--primary-purple);
-    animation: flicker 3s infinite alternate;
-}
+const winningConditions = [
+    [0, 1, 2], [3, 4, 5], [6, 7, 8],
+    [0, 3, 6], [1, 4, 7], [2, 5, 8],
+    [0, 4, 8], [2, 4, 6]
+];
 
-/* Game Mode Toggle */
-.mode-container {
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 10px 20px;
-    border-radius: 30px;
-    border: 1px solid rgba(176, 38, 255, 0.3);
-}
+/* ===============================
+   STATUS UPDATE
+================================ */
+const updateStatus = () => {
+    if (!gameActive) return;
 
-.mode-label {
-    font-size: 0.9rem;
-    color: #ccc;
-    cursor: pointer;
-    transition: 0.3s;
-}
+    const color =
+        currentPlayer === 'X'
+            ? 'var(--primary-purple)'
+            : 'var(--primary-cyan)';
 
-.mode-label.active {
-    color: var(--primary-cyan);
-    text-shadow: 0 0 8px var(--primary-cyan);
-    font-weight: bold;
-}
+    if (isVsAI && currentPlayer === 'O') {
+        statusText.innerHTML = `Computer is thinking...`;
+    } else {
+        statusText.innerHTML =
+            `Player <span style="color:${color}">${currentPlayer}</span>'s Turn`;
+    }
+};
 
-/* Toggle Switch */
-.switch {
-    position: relative;
-    display: inline-block;
-    width: 50px;
-    height: 24px;
-}
-.switch input { opacity: 0; width: 0; height: 0; }
-.slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background-color: #333;
-    transition: .4s;
-    border-radius: 24px;
-    box-shadow: inset 0 0 5px #000;
-}
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 16px;
-    width: 16px;
-    left: 4px;
-    bottom: 4px;
-    background-color: white;
-    transition: .4s;
-    border-radius: 50%;
-    box-shadow: 0 0 5px white;
-}
-input:checked + .slider {
-    background-color: var(--primary-purple);
-}
-input:checked + .slider:before {
-    transform: translateX(26px);
-}
+/* ===============================
+   CELL CLICK
+================================ */
+const handleCellClick = (e) => {
+    const clickedCell = e.target;
+    const clickedCellIndex = parseInt(clickedCell.getAttribute('data-index'));
 
-/* Status Text */
-.status {
-    font-size: 1.2rem;
-    margin-bottom: 25px;
-    min-height: 1.5em;
-    color: #ddd;
-    text-shadow: 0 0 5px rgba(255,255,255,0.5);
-    transition: color 0.3s ease;
-}
+    if (
+        gameState[clickedCellIndex] !== "" ||
+        !gameActive ||
+        (isVsAI && currentPlayer === 'O')
+    ) {
+        return;
+    }
 
-.status span {
-    font-weight: bold;
-    font-size: 1.4rem;
-}
+    // ✅ CLICK SOUND
+    playSound(clickSound);
 
-/* The Game Grid */
-.board {
-    display: grid;
-    grid-template-columns: repeat(3, 100px);
-    grid-template-rows: repeat(3, 100px);
-    gap: 15px;
-    padding: 15px;
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: 20px;
-    box-shadow: 0 0 30px rgba(176, 38, 255, 0.1);
-    backdrop-filter: blur(5px);
-}
+    handleCellPlayed(clickedCell, clickedCellIndex);
 
-/* Individual Cells */
-.cell {
-    width: 100px;
-    height: 100px;
-    background: var(--glass-bg);
-    border-radius: 12px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 3.5rem;
-    cursor: pointer;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
+    if (handleResultValidation()) return;
 
-.cell:hover {
-    transform: scale(1.05);
-    background: rgba(176, 38, 255, 0.15);
-    border-color: var(--primary-purple);
-    box-shadow: 0 0 15px var(--primary-purple);
-}
+    if (isVsAI && gameActive) {
+        setTimeout(makeComputerMove, 500);
+    }
+};
 
-/* X and O Styling */
-.cell.x {
-    color: var(--primary-purple);
-    text-shadow: 0 0 15px var(--primary-purple), 0 0 30px var(--primary-purple);
-}
+/* ===============================
+   PLAY MOVE
+================================ */
+const handleCellPlayed = (clickedCell, clickedCellIndex) => {
+    gameState[clickedCellIndex] = currentPlayer;
+    clickedCell.innerText = currentPlayer;
+    clickedCell.classList.add(currentPlayer.toLowerCase(), 'pop-in');
+};
 
-.cell.o {
-    color: var(--primary-cyan);
-    text-shadow: 0 0 15px var(--primary-cyan), 0 0 30px var(--primary-cyan);
-}
+/* ===============================
+   CHECK WIN / DRAW
+================================ */
+const handleResultValidation = () => {
+    let roundWon = false;
+    let winningIndices = [];
 
-/* Animations */
-.pop-in {
-    animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-}
+    for (let i = 0; i < winningConditions.length; i++) {
+        const [a, b, c] = winningConditions[i];
 
-@keyframes popIn {
-    0% { transform: scale(0) rotate(-45deg); opacity: 0; }
-    100% { transform: scale(1) rotate(0deg); opacity: 1; }
-}
-
-.cell.win {
-    background: rgba(255, 255, 255, 0.2);
-    animation: pulseWin 1s infinite alternate;
-}
-
-@keyframes pulseWin {
-    0% { box-shadow: 0 0 20px var(--primary-purple); }
-    100% { box-shadow: 0 0 50px var(--primary-purple), 0 0 20px #fff; }
-}
-
-/* Restart Button */
-.restart-btn {
-    margin-top: 30px;
-    padding: 12px 30px;
-    font-family: 'Orbitron', sans-serif;
-    font-size: 1rem;
-    font-weight: bold;
-    color: white;
-    background: transparent;
-    border: 2px solid var(--primary-purple);
-    border-radius: 50px;
-    cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    transition: all 0.3s ease;
-    box-shadow: 0 0 10px rgba(176, 38, 255, 0.3);
-}
-
-.restart-btn:hover {
-    background: var(--primary-purple);
-    box-shadow: 0 0 30px var(--primary-purple);
-    transform: translateY(-2px);
+        if (gameState[a] && gameState[a] === gameState[b] && gameState[a] === gameState[c]) {
+            roundWon = true;
+            winningIndices = winningConditions[i];
+            break;
         }
-
-@keyframes flicker {
-    0%, 18%, 22%, 25%, 53%, 57%, 100% {
-        text-shadow: 0 0 10px var(--primary-purple), 0 0 20px var(--primary-purple), 0 0 40px var(--primary-purple);
     }
-    20%, 24%, 55% {       
-        text-shadow: none; opacity: 0.5;
+
+    if (roundWon) {
+        const color =
+            currentPlayer === 'X'
+                ? 'var(--primary-purple)'
+                : 'var(--primary-cyan)';
+
+        const winnerName =
+            isVsAI && currentPlayer === 'O'
+                ? 'Computer'
+                : `Player ${currentPlayer}`;
+
+        statusText.innerHTML =
+            `<span style="color:${color}">${winnerName}</span> Wins!`;
+
+        winningIndices.forEach(i => cells[i].classList.add('win'));
+
+        // ✅ WIN / LOSE SOUND
+        playSound(isVsAI && currentPlayer === 'O' ? loseSound : winSound);
+
+        gameActive = false;
+        return true;
     }
-}
 
-@media (max-width: 400px) {
-    .board {
-        grid-template-columns: repeat(3, 80px);
-        grid-template-rows: repeat(3, 80px);
-        gap: 10px;
+    if (!gameState.includes("")) {
+        statusText.innerHTML = `Game Draw!`;
+
+        // ✅ DRAW SOUND
+        playSound(drawSound);
+
+        gameActive = false;
+        return true;
     }
-    .cell { width: 80px; height: 80px; font-size: 2.5rem; }
-    h1 { font-size: 2rem; }
-}
-/* Developer Credit */
-.dev-credit {
-    font-size: 0.85rem;
-    margin-bottom: 20px;
-    color: #ccc;
-}
 
-.dev-credit a {
-    color: var(--primary-cyan);
-    text-decoration: none;
-    font-weight: bold;
-}
+    currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+    updateStatus();
+    return false;
+};
 
-.dev-credit a:hover {
-    text-shadow: 0 0 8px var(--primary-cyan);
-}
+/* ===============================
+   RESTART GAME
+================================ */
+const handleRestartGame = () => {
+    // ✅ CLICK SOUND
+    playSound(clickSound);
 
-/* Thin Border for All Boxes */
-.board,
-.cell,
-.mode-container,
-.restart-btn {
-    border: 0.5px solid rgba(255, 255, 255, 0.15);
-}
+    gameActive = true;
+    currentPlayer = 'X';
+    gameState = ["", "", "", "", "", "", "", "", ""];
+    statusText.style.color = "#ddd";
+    updateStatus();
+
+    cells.forEach(cell => {
+        cell.innerText = "";
+        cell.className = "cell";
+    });
+};
+
+/* ===============================
+   AI LOGIC
+================================ */
+const makeComputerMove = () => {
+    if (!gameActive) return;
+
+    let bestScore = -Infinity;
+    let move;
+
+    for (let i = 0; i < 9; i++) {
+        if (gameState[i] === '') {
+            gameState[i] = 'O';
+            let score = minimax(gameState, 0, false);
+            gameState[i] = '';
+            if (score > bestScore) {
+                bestScore = score;
+                move = i;
+            }
+        }
+    }
+
+    const cell = document.querySelector(`.cell[data-index='${move}']`);
+    handleCellPlayed(cell, move);
+    handleResultValidation();
+};
+
+const scores = { X: -10, O: 10, tie: 0 };
+
+const minimax = (board, depth, isMaximizing) => {
+    const result = checkWinner();
+    if (result !== null) return scores[result];
+
+    if (isMaximizing) {
+        let best = -Infinity;
+        for (let i = 0; i < 9; i++) {
+            if (board[i] === '') {
+                board[i] = 'O';
+                best = Math.max(best, minimax(board, depth + 1, false));
+                board[i] = '';
+            }
+        }
+        return best;
+    } else {
+        let best = Infinity;
+        for (let i = 0; i < 9; i++) {
+            if (board[i] === '') {
+                board[i] = 'X';
+                best = Math.min(best, minimax(board, depth + 1, true));
+                board[i] = '';
+            }
+        }
+        return best;
+    }
+};
+
+const checkWinner = () => {
+    for (let [a, b, c] of winningConditions) {
+        if (gameState[a] && gameState[a] === gameState[b] && gameState[a] === gameState[c]) {
+            return gameState[a];
+        }
+    }
+    if (!gameState.includes("")) return 'tie';
+    return null;
+};
+
+/* ===============================
+   EVENTS
+================================ */
+aiToggle.addEventListener('change', () => {
+    isVsAI = aiToggle.checked;
+    labelAi.classList.toggle('active', isVsAI);
+    labelPvp.classList.toggle('active', !isVsAI);
+    handleRestartGame();
+});
+
+labelPvp.addEventListener('click', () => {
+    aiToggle.checked = false;
+    aiToggle.dispatchEvent(new Event('change'));
+});
+
+labelAi.addEventListener('click', () => {
+    aiToggle.checked = true;
+    aiToggle.dispatchEvent(new Event('change'));
+});
+
+cells.forEach(cell => cell.addEventListener('click', handleCellClick));
+restartBtn.addEventListener('click', handleRestartGame);
