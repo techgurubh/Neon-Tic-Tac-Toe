@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Tic Tac Toe</title>
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Link to CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        <h1>Tic Tac Toe</h1>
+        <p class="dev-credit">
+    Developed by 
+    <a href="https://wa.me/917002443108" target="_blank">
+        Jahangir Hussain
+    </a>
+</p>
+        
+        <div class="mode-container">
+            <span class="mode-label" id="label-pvp">P v P</span>
+            <label class="switch">
+                <input type="checkbox" id="aiToggle" checked> <!-- Default Checked -->
+                <span class="slider"></span>
+            </label>
+            <span class="mode-label active" id="label-ai">vs AI</span> <!-- Default Active -->
+        </div>
+
+        <div class="status" id="status">Player <span style="color: var(--primary-purple)">X</span>'s Turn</div>
+        
+        <div class="board" id="board">
+            <div class="cell" data-index="0"></div>
+            <div class="cell" data-index="1"></div>
+            <div class="cell" data-index="2"></div>
+            <div class="cell" data-index="3"></div>
+            <div class="cell" data-index="4"></div>
+            <div class="cell" data-index="5"></div>
+            <div class="cell" data-index="6"></div>
+            <div class="cell" data-index="7"></div>
+            <div class="cell" data-index="8"></div>
+        </div>
+
+        <button class="restart-btn" id="restartBtn">Restart Game</button>
+    </div>
+
+    <!-- Link to JavaScript -->
+    <script src="script.js"></script>
+    <!-- Sound Effects -->
+<audio id="clickSound" src="sounds/click.mp3"></audio>
+<audio id="winSound" src="sounds/win.mp3"></audio>
+<audio id="loseSound" src="sounds/lose.mp3"></audio>
+<audio id="drawSound" src="sounds/draw.mp3"></audio>
+</body>
+</html>
