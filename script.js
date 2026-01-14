@@ -6,10 +6,15 @@ const winSound   = document.getElementById('winSound');
 const loseSound  = document.getElementById('loseSound');
 const drawSound  = document.getElementById('drawSound');
 
+// 🔓 Unlock audio on first user interaction (IMPORTANT)
+document.body.addEventListener('click', () => {
+    clickSound.play().catch(() => {});
+}, { once: true });
+
 const playSound = (sound) => {
     if (!sound) return;
     sound.currentTime = 0;
-    sound.play();
+    sound.play().catch(() => {});
 };
 
 /* ===============================
